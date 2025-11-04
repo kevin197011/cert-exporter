@@ -1,38 +1,38 @@
 groups:
-- name: domain_expiry_alerts
+- name: cert_expiry_alerts
   rules:
-  - alert: DomainExpiringSoon
-    expr: domain_expiry_days < 30 and domain_expiry_days > 0
+  - alert: CertExpiringSoon
+    expr: cert_expiry_days < 30 and cert_expiry_days > 0
     for: 5m
     labels:
       severity: warning
     annotations:
-      summary: "域名即将过期"
-      description: "域名 {{ $labels.domain }} 将在 {{ $value | printf \"%.0f\" }} 天后过期"
+      summary: "SSL证书即将过期"
+      description: "域名 {{ $labels.domain }} 的SSL证书将在 {{ $value | printf \"%.0f\" }} 天后过期"
 
-  - alert: DomainExpiringCritical
-    expr: domain_expiry_days < 7 and domain_expiry_days > 0
+  - alert: CertExpiringCritical
+    expr: cert_expiry_days < 7 and cert_expiry_days > 0
     for: 1m
     labels:
       severity: critical
     annotations:
-      summary: "域名紧急过期警告"
-      description: "域名 {{ $labels.domain }} 将在 {{ $value | printf \"%.0f\" }} 天后过期，请立即续费！"
+      summary: "SSL证书紧急过期警警"
+      description: "域名 {{ $labels.domain }} 的SSL证书将在 {{ $value | printf \"%.0f\" }} 天后过期，请立即更新！"
 
-  - alert: DomainCheckFailed
-    expr: domain_check_status == 0 or domain_expiry_days == -999
+  - alert: CertCheckFailed
+    expr: cert_check_status == 0 or cert_expiry_days == -999
     for: 5m
     labels:
       severity: warning
     annotations:
-      summary: "域名检查失败"
-      description: "无法获取域名 {{ $labels.domain }} 的过期信息，请检查域名状态和WHOIS服务器连接"
+      summary: "SSL证书检查失败"
+      description: "无法获取域名 {{ $labels.domain }} 的SSL证书信息，请检查域名状态和SSL连接"
 
-  - alert: DomainExporterDown
-    expr: up{job="domain-exporter"} == 0
+  - alert: CertExporterDown
+    expr: up{job="cert-exporter"} == 0
     for: 2m
     labels:
       severity: critical
     annotations:
-      summary: "域名监控服务离线"
-      description: "域名过期监控服务已离线超过2分钟"
+      summary: "证书监控服务离线"
+      description: "SSL证书过期监控服务已离线超过2分钟"

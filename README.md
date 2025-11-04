@@ -146,8 +146,8 @@ helm install cert-exporter ./cert-exporter \
 
 #### 启用 Prometheus 监控
 ```bash
-helm install domain-exporter ./domain-exporter \
-  --set config.domains="yourdomain.com" \
+helm install cert-exporter ./cert-exporter \
+  --set config.domains="yourdomain.com:443" \
   --set serviceMonitor.enabled=true \
   --set serviceMonitor.labels.release=prometheus
 ```

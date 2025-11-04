@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/domain-exporter
+  IMAGE_NAME: ${{ github.repository_owner }}/cert-exporter
 
 jobs:
   # 测试任务 - 快速反馈
