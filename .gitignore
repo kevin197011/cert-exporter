@@ -1,0 +1,35 @@
+# 环境变量文件
+.env
+
+# Go编译文件
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go测试文件
+*.test
+*.out
+
+# Go模块缓存
+go.sum
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志文件
+*.log
+
+# 临时文件
+/tmp/
+
+# 测试和调试文件
+debug-*.yml
+test-*.yml
+test-*.sh
+debug-*.sh
+network-diagnosis.sh

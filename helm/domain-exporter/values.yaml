@@ -1,0 +1,128 @@
+# Default values for domain-exporter
+replicaCount: 1
+
+image:
+  repository: ghcr.io/kevin197011/domain-exporter
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: domain-exporter.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: domain-exporter-tls
+  #    hosts:
+  #      - domain-exporter.local
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Application configuration
+config:
+  # 监控的域名列表，用逗号分隔
+  domains: "example.com,test.com"
+  # 检查间隔（秒）
+  checkInterval: 3600
+  # HTTP服务端口
+  port: 8080
+  # 日志级别
+  logLevel: "info"
+  # WHOIS查询超时时间（秒）
+  timeout: 30
+
+# Nacos configuration (optional)
+nacos:
+  enabled: true
+  url: "http://192.168.1.11:8848"  
+  username: "nacos"
+  password: "nacos"
+  namespaceId: "devops"
+  dataId: "domain-exporter"
+  group: "DEFAULT_GROUP"
+  skipSSLVerify: true  # 设置为 true 跳过 HTTPS SSL 证书验证
+
+# Environment variables
+env: []
+  # - name: CUSTOM_ENV
+  #   value: "custom_value"
+
+# ConfigMap and Secret mounts
+configMaps: []
+secrets: []
+
+# Prometheus ServiceMonitor
+serviceMonitor:
+  enabled: true
+  namespace: ""  # 留空使用当前命名空间
+  labels: 
+    release: prometheus  # 重要：需要匹配 Prometheus 的 serviceMonitorSelector
+  interval: 30s
+  scrapeTimeout: 10s
+  path: /metrics
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1

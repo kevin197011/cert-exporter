@@ -1,0 +1,11 @@
+services:
+  cert-exporter:
+    # image: ghcr.io/kevin197011/cert-exporter:latest
+    build: .  # 使用本地构建
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai
