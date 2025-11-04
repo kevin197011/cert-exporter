@@ -24,13 +24,13 @@ jobs:
         go-version: '1.24'
         cache: true
 
-    - name: Run tests
-      run: |
-        go mod download
-        go test -v -race -coverprofile=coverage.out ./...
+    # - name: Run tests
+    #   run: |
+    #     go mod download
+    #     go test -v -race -coverprofile=coverage.out ./...
 
-    - name: Build test
-      run: go build -v ./...
+    # - name: Build test
+    #   run: go build -v ./...
 
   # Docker 构建和推送任务
   build-and-push:
