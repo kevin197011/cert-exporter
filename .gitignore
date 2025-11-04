@@ -12,8 +12,6 @@
 *.test
 *.out
 
-# Go模块缓存
-go.sum
 
 # IDE文件
 .vscode/
