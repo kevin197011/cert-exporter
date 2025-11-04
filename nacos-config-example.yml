@@ -5,7 +5,7 @@ check_interval: 3600
 port: 8080
 
 # 日志级别 - 可动态调整日志输出级别
-log_level: debug
+log_level: info
 
 # SSL连接超时时间（秒） - 可动态调整SSL连接超时
 timeout: 30
