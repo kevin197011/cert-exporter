@@ -5,16 +5,25 @@ check_interval: 3600
 port: 8080
 
 # 日志级别 - 可动态调整日志输出级别
+# 可选值: debug, info, warn, error
 log_level: info
 
 # SSL连接超时时间（秒） - 可动态调整SSL连接超时
 timeout: 30
 
-# 域名列表 - 可动态添加/删除域名（支持域名:端口格式，默认443端口）
+# 注意：证书检查采用并发模式，最大并发数为10
+# 这样可以大幅提升大量域名的检查速度
+
+# 域名列表 - 可动态添加/删除域名
+# 支持格式：
+#   - 纯域名: example.com
+#   - 带端口: example.com:8443
+#   - 带协议前缀: https://example.com (会自动移除协议前缀)
+#   - 默认端口: 443
 domains:
-  - https://example.com
-  - https://google.com:443
+  - example.com
+  - google.com:443
   - https://github.com
-  - https://qq.com
-  - https://baidu.com
+  - qq.com
+  - baidu.com
 

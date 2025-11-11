@@ -267,16 +267,3 @@ func (m *NacosConfigManager) Close() {
 	}
 }
 
-// equalStringSlices 比较两个字符串切片是否相等
-func equalStringSlices(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, v := range a {
-		if v != b[i] {
-			return false
-		}
-	}
-	return true
-}
-

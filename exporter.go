@@ -228,23 +228,49 @@ func (e *CertExporter) TriggerCheck() {
 	}
 }
 
-// checkAllCerts 检查所有SSL证书（串行执行）
+// checkAllCerts 检查所有SSL证书（并发执行）
 func (e *CertExporter) checkAllCerts() {
 	currentConfig := e.getCurrentConfig()
-	slog.Info("开始串行检查SSL证书", "domain_count", len(currentConfig.Domains))
-
-	// 串行检查每个域名的SSL证书
-	for i, domain := range currentConfig.Domains {
-		slog.Debug("检查进度", "current", i+1, "total", len(currentConfig.Domains), "domain", domain)
-		e.checkCert(domain)
-		
-		// 在域名之间添加短暂延迟，避免对服务器造成压力
-		if i < len(currentConfig.Domains)-1 {
-			time.Sleep(time.Second * 1)
-		}
+	domainCount := len(currentConfig.Domains)
+	
+	if domainCount == 0 {
+		slog.Warn("域名列表为空，跳过检查")
+		return
 	}
-
-	slog.Info("所有SSL证书检查完成")
+	
+	slog.Info("开始并发检查SSL证书", "domain_count", domainCount)
+	
+	// 使用 WaitGroup 等待所有检查完成
+	var wg sync.WaitGroup
+	
+	// 使用带缓冲的通道限制并发数，避免同时发起过多连接
+	// 最大并发数设置为 10，可以根据需要调整
+	maxConcurrent := 10
+	if domainCount < maxConcurrent {
+		maxConcurrent = domainCount
+	}
+	semaphore := make(chan struct{}, maxConcurrent)
+	
+	// 并发检查每个域名的SSL证书
+	for i, domain := range currentConfig.Domains {
+		wg.Add(1)
+		
+		go func(index int, d string) {
+			defer wg.Done()
+			
+			// 获取信号量
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			
+			slog.Debug("检查进度", "current", index+1, "total", domainCount, "domain", d)
+			e.checkCert(d)
+		}(i, domain)
+	}
+	
+	// 等待所有检查完成
+	wg.Wait()
+	
+	slog.Info("所有SSL证书检查完成", "domain_count", domainCount)
 }
 
 // checkCert 检查单个域名的SSL证书

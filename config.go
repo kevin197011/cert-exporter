@@ -183,4 +183,30 @@ func applyDefaults(config *Config) {
 	if config.NamespaceId == "" {
 		config.NamespaceId = "public"
 	}
+	
+	// 规范化域名列表，移除 http:// 或 https:// 前缀
+	normalizeDomains(config)
+}
+
+// normalizeDomains 规范化域名列表，移除协议前缀
+func normalizeDomains(config *Config) {
+	for i, domain := range config.Domains {
+		// 移除空白字符
+		domain = strings.TrimSpace(domain)
+		
+		// 移除 https:// 前缀
+		if strings.HasPrefix(domain, "https://") {
+			domain = strings.TrimPrefix(domain, "https://")
+		}
+		
+		// 移除 http:// 前缀
+		if strings.HasPrefix(domain, "http://") {
+			domain = strings.TrimPrefix(domain, "http://")
+		}
+		
+		// 移除尾部的斜杠
+		domain = strings.TrimSuffix(domain, "/")
+		
+		config.Domains[i] = domain
+	}
 }
