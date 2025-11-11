@@ -1,9 +1,0 @@
-# Nacos配置 - 简化版本
-# 请明确指定端口，支持 HTTP/HTTPS
-# 示例: http://nacos.example.com:8848 或 https://nacos.example.com:443
-nacos_url: "http://192.168.1.11:8848"
-username: "nacos"
-password: "nacos"
-namespace_id: "devops"
-data_id: "cert-exporter"
-group: "DEFAULT_GROUP"

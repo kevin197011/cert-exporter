@@ -121,15 +121,17 @@ func (m *NacosConfigManager) loadConfig() error {
 
 	// 检查配置是否有变化
 	configChanged := oldConfig == nil || 
-		len(oldConfig.Domains) != len(nacosConfig.Domains) ||
+		!equalStringSlices(oldConfig.Domains, nacosConfig.Domains) ||
 		oldConfig.CheckInterval != nacosConfig.CheckInterval ||
-		oldConfig.Timeout != nacosConfig.Timeout
+		oldConfig.Timeout != nacosConfig.Timeout ||
+		oldConfig.LogLevel != nacosConfig.LogLevel
 
 	if configChanged {
 		slog.Info("Nacos配置已更新", 
 			"domain_count", len(nacosConfig.Domains),
 			"check_interval", nacosConfig.CheckInterval,
-			"timeout", nacosConfig.Timeout)
+			"timeout", nacosConfig.Timeout,
+			"log_level", nacosConfig.LogLevel)
 
 		// 通知配置更新
 		select {
@@ -138,6 +140,8 @@ func (m *NacosConfigManager) loadConfig() error {
 		default:
 			slog.Debug("配置更新通道已满，跳过通知")
 		}
+	} else {
+		slog.Debug("Nacos配置已重新加载，但未检测到变化")
 	}
 
 	return nil
@@ -261,5 +265,18 @@ func (m *NacosConfigManager) Close() {
 		close(m.updateChan)
 		slog.Info("Nacos配置管理器已关闭")
 	}
+}
+
+// equalStringSlices 比较两个字符串切片是否相等
+func equalStringSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
