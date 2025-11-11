@@ -19,7 +19,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # 运行阶段
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates tzdata
+# 安装必要的工具和证书
+RUN apk --no-cache add ca-certificates tzdata curl
 
 # 创建应用用户
 RUN addgroup -g 1001 -S appgroup && \
