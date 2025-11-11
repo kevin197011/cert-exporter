@@ -124,7 +124,19 @@ func GetCertInfoWithFallback(domain string, timeout time.Duration, config *Confi
 		}
 	}
 	
-	slog.Error("所有SSL证书查询尝试都失败了", "domain", domain, "attempts", maxRetries, "last_error", lastErr)
+	// 根据错误类型决定日志级别
+	errMsg := lastErr.Error()
+	if strings.Contains(errMsg, "timeout") || 
+	   strings.Contains(errMsg, "i/o timeout") ||
+	   strings.Contains(errMsg, "connection refused") ||
+	   strings.Contains(errMsg, "no such host") ||
+	   strings.Contains(errMsg, "server misbehaving") {
+		// 网络问题使用 WARN 级别，避免刷屏
+		slog.Warn("SSL证书查询失败（网络问题）", "domain", domain, "attempts", maxRetries, "error", lastErr)
+	} else {
+		// 其他错误使用 ERROR 级别
+		slog.Error("SSL证书查询失败", "domain", domain, "attempts", maxRetries, "error", lastErr)
+	}
 	return nil, fmt.Errorf("SSL证书查询失败: %v", lastErr)
 }
 

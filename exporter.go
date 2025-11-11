@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -238,18 +240,28 @@ func (e *CertExporter) checkAllCerts() {
 		return
 	}
 	
-	slog.Info("开始并发检查SSL证书", "domain_count", domainCount)
+	startTime := time.Now()
 	
 	// 使用 WaitGroup 等待所有检查完成
 	var wg sync.WaitGroup
 	
 	// 使用带缓冲的通道限制并发数，避免同时发起过多连接
-	// 最大并发数设置为 10，可以根据需要调整
-	maxConcurrent := 10
+	// 最大并发数设置为 100，可以根据需要调整
+	maxConcurrent := 100
 	if domainCount < maxConcurrent {
 		maxConcurrent = domainCount
 	}
+	
+	slog.Info("开始并发检查SSL证书", 
+		"domain_count", domainCount,
+		"max_concurrent", maxConcurrent,
+		"timeout", currentConfig.Timeout)
+	
 	semaphore := make(chan struct{}, maxConcurrent)
+	
+	// 统计成功和失败数量
+	var successCount, failCount int
+	var mu sync.Mutex
 	
 	// 并发检查每个域名的SSL证书
 	for i, domain := range currentConfig.Domains {
@@ -262,20 +274,33 @@ func (e *CertExporter) checkAllCerts() {
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 			
-			slog.Debug("检查进度", "current", index+1, "total", domainCount, "domain", d)
-			e.checkCert(d)
+			slog.Debug("开始检查", "progress", fmt.Sprintf("%d/%d", index+1, domainCount), "domain", d)
+			success := e.checkCert(d)
+			
+			mu.Lock()
+			if success {
+				successCount++
+			} else {
+				failCount++
+			}
+			mu.Unlock()
 		}(i, domain)
 	}
 	
 	// 等待所有检查完成
 	wg.Wait()
 	
-	slog.Info("所有SSL证书检查完成", "domain_count", domainCount)
+	duration := time.Since(startTime)
+	slog.Info("所有SSL证书检查完成", 
+		"domain_count", domainCount,
+		"success", successCount,
+		"failed", failCount,
+		"duration_seconds", duration.Seconds())
 }
 
-// checkCert 检查单个域名的SSL证书
-func (e *CertExporter) checkCert(domain string) {
-	slog.Debug("检查SSL证书", "domain", domain)
+// checkCert 检查单个域名的SSL证书，返回是否成功
+func (e *CertExporter) checkCert(domain string) bool {
+	slog.Debug("开始检查SSL证书", "domain", domain)
 
 	// 记录检查时间
 	now := time.Now()
@@ -288,13 +313,25 @@ func (e *CertExporter) checkCert(domain string) {
 	timeout := time.Duration(currentConfig.Timeout) * time.Second
 	certInfo, err := GetCertInfoWithFallback(domain, timeout, currentConfig)
 	if err != nil {
-		slog.Error("获取SSL证书信息失败", "domain", domain, "error", err)
+		// 根据错误类型决定日志级别
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "timeout") || 
+		   strings.Contains(errMsg, "i/o timeout") ||
+		   strings.Contains(errMsg, "connection refused") ||
+		   strings.Contains(errMsg, "no such host") ||
+		   strings.Contains(errMsg, "server misbehaving") {
+			// 网络问题使用 WARN 级别
+			slog.Warn("SSL证书检查失败（网络问题）", "domain", domain, "error", err)
+		} else {
+			// 其他错误使用 ERROR 级别
+			slog.Error("SSL证书检查失败", "domain", domain, "error", err)
+		}
 		e.certStatus.WithLabelValues(domain).Set(0)
 		// 设置失败标记：-999天表示检测失败
 		e.certExpiryDays.WithLabelValues(domain).Set(-999)
 		// 设置过期时间戳为0表示未知
 		e.certExpiryTime.WithLabelValues(domain).Set(0)
-		return
+		return false
 	}
 
 	// 设置成功状态
@@ -308,13 +345,32 @@ func (e *CertExporter) checkCert(domain string) {
 	// 设置过期时间戳
 	e.certExpiryTime.WithLabelValues(domain).Set(float64(certInfo.ExpiryDate.Unix()))
 
-	slog.Info("SSL证书检查完成", 
-		"domain", domain,
-		"days_until_expiry", int(daysUntilExpiryInt),
-		"expiry_date", certInfo.ExpiryDate.Format("2006-01-02"),
-		"issuer", certInfo.Issuer,
-		"subject", certInfo.Subject,
-		"method", certInfo.Method)
+	// 根据剩余天数决定日志级别
+	days := int(daysUntilExpiryInt)
+	if days < 0 {
+		slog.Error("SSL证书已过期", 
+			"domain", domain,
+			"expired_days", -days,
+			"expiry_date", certInfo.ExpiryDate.Format("2006-01-02"))
+	} else if days < 7 {
+		slog.Warn("SSL证书即将过期", 
+			"domain", domain,
+			"days_until_expiry", days,
+			"expiry_date", certInfo.ExpiryDate.Format("2006-01-02"))
+	} else if days < 30 {
+		slog.Info("SSL证书检查完成（即将过期）", 
+			"domain", domain,
+			"days_until_expiry", days,
+			"expiry_date", certInfo.ExpiryDate.Format("2006-01-02"))
+	} else {
+		slog.Debug("SSL证书检查完成", 
+			"domain", domain,
+			"days_until_expiry", days,
+			"expiry_date", certInfo.ExpiryDate.Format("2006-01-02"),
+			"issuer", certInfo.Issuer)
+	}
+	
+	return true
 }
 
 // logConfigChanges 记录配置变化的详细信息
