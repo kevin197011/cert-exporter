@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -41,7 +42,7 @@ func main() {
 	default:
 		logLevel = slog.LevelInfo
 	}
-	
+
 	// 环境变量可以覆盖配置文件
 	if envLogLevel := os.Getenv("LOG_LEVEL"); envLogLevel != "" {
 		switch strings.ToLower(envLogLevel) {
@@ -55,29 +56,29 @@ func main() {
 			logLevel = slog.LevelInfo
 		}
 	}
-	
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: logLevel,
 	}))
 	slog.SetDefault(logger)
 
 	// 打印详细的配置信息用于调试
-	slog.Info("配置加载完成", 
+	slog.Info("配置加载完成",
 		"domains", len(config.Domains),
 		"check_interval", config.CheckInterval,
 		"port", config.Port,
 		"timeout", config.Timeout,
 		"nacos_enabled", config.IsNacosEnabled())
-	
+
 	// 如果启用了Nacos，打印详细的Nacos配置
 	if config.IsNacosEnabled() {
-		slog.Info("Nacos配置详情", 
+		slog.Info("Nacos配置详情",
 			"nacos_url", config.NacosUrl,
 			"username", config.Username,
 			"namespace_id", config.NamespaceId,
 			"data_id", config.DataId,
 			"group", config.Group)
-		
+
 		// 打印环境变量以便调试
 		slog.Debug("环境变量调试信息",
 			"NACOS_URL", os.Getenv("NACOS_URL"),
@@ -114,35 +115,29 @@ func main() {
 	http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		currentConfig := exporter.getCurrentConfig()
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		
-		// 构建详细的配置信息
-		domainsJson := "["
-		for i, domain := range currentConfig.Domains {
-			if i > 0 {
-				domainsJson += ","
-			}
-			domainsJson += fmt.Sprintf(`"%s"`, domain)
-		}
-		domainsJson += "]"
-		
-		fmt.Fprintf(w, `{
-			"domains": %s,
-			"domain_count": %d,
-			"check_interval": %d,
-			"port": %d,
-			"log_level": "%s",
-			"timeout": %d,
+
+		// 构建配置信息结构
+		configInfo := map[string]interface{}{
+			"domains":          currentConfig.Domains,
+			"domain_count":     len(currentConfig.Domains),
+			"check_interval":   currentConfig.CheckInterval,
+			"port":             currentConfig.Port,
+			"log_level":        currentConfig.LogLevel,
+			"timeout":          currentConfig.Timeout,
 			"detection_method": "ssl",
-			"execution_mode": "serial",
-			"nacos_enabled": %t,
-			"nacos_url": "%s",
-			"nacos_namespace": "%s",
-			"nacos_data_id": "%s",
-			"nacos_group": "%s"
-		}`, domainsJson, len(currentConfig.Domains), currentConfig.CheckInterval, currentConfig.Port,
-			currentConfig.LogLevel, currentConfig.Timeout,
-			currentConfig.IsNacosEnabled(),
-			currentConfig.NacosUrl, currentConfig.NamespaceId, currentConfig.DataId, currentConfig.Group)
+			"execution_mode":   "serial",
+			"nacos_enabled":    currentConfig.IsNacosEnabled(),
+			"nacos_url":        currentConfig.NacosUrl,
+			"nacos_namespace":  currentConfig.NamespaceId,
+			"nacos_data_id":    currentConfig.DataId,
+			"nacos_group":      currentConfig.Group,
+		}
+
+		// 使用标准库 json 包序列化，避免注入风险
+		if err := json.NewEncoder(w).Encode(configInfo); err != nil {
+			slog.Error("序列化配置信息失败", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -155,14 +150,14 @@ func main() {
 	<style>
 		body { font-family: Arial, sans-serif; margin: 40px; }
 		h1 { color: #333; }
-		.button { 
-			display: inline-block; 
-			padding: 10px 20px; 
-			margin: 10px 5px; 
-			background-color: #007cba; 
-			color: white; 
-			text-decoration: none; 
-			border-radius: 5px; 
+		.button {
+			display: inline-block;
+			padding: 10px 20px;
+			margin: 10px 5px;
+			background-color: #007cba;
+			color: white;
+			text-decoration: none;
+			border-radius: 5px;
 			border: none;
 			cursor: pointer;
 		}

@@ -31,3 +31,4 @@ test-*.yml
 test-*.sh
 debug-*.sh
 network-diagnosis.sh
+.cursor

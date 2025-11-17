@@ -21,16 +21,23 @@ type CertInfo struct {
 }
 
 // GetCertInfo 获取SSL证书信息
+// 参数:
+//   - domain: 要查询的域名
+//   - timeout: 连接超时时间
+// 返回值:
+//   - *CertInfo: SSL证书信息对象
+//   - error: 如果获取失败则返回错误
+// 功能: 通过TLS连接获取指定域名的SSL证书信息，包括过期时间、颁发者等
 func GetCertInfo(domain string, timeout time.Duration) (*CertInfo, error) {
 	slog.Debug("开始SSL证书查询", "domain", domain, "timeout", timeout)
-	
+
 	// 创建带超时的context
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	// 解析域名，确保格式正确
 	host, port := parseDomainAndPort(domain)
-	
+
 	// 创建TLS连接配置
 	config := &tls.Config{
 		ServerName:         host,
@@ -44,15 +51,15 @@ func GetCertInfo(domain string, timeout time.Duration) (*CertInfo, error) {
 	}
 
 	resultChan := make(chan result, 1)
-	
+
 	// 在goroutine中执行SSL连接
 	go func() {
 		slog.Debug("执行SSL连接", "host", host, "port", port)
-		
+
 		dialer := &net.Dialer{
 			Timeout: timeout,
 		}
-		
+
 		conn, err := tls.DialWithDialer(dialer, "tcp", net.JoinHostPort(host, port), config)
 		if err != nil {
 			slog.Debug("SSL连接失败", "domain", domain, "error", err)
@@ -70,7 +77,7 @@ func GetCertInfo(domain string, timeout time.Duration) (*CertInfo, error) {
 
 		// 使用第一个证书（服务器证书）
 		cert := certs[0]
-		
+
 		certInfo := &CertInfo{
 			Domain:     domain,
 			ExpiryDate: cert.NotAfter,
@@ -78,12 +85,12 @@ func GetCertInfo(domain string, timeout time.Duration) (*CertInfo, error) {
 			Subject:    cert.Subject.CommonName,
 			Method:     "ssl",
 		}
-		
-		slog.Debug("SSL证书查询成功", "domain", domain, 
+
+		slog.Debug("SSL证书查询成功", "domain", domain,
 			"expiry_date", cert.NotAfter,
 			"issuer", cert.Issuer.CommonName,
 			"subject", cert.Subject.CommonName)
-		
+
 		resultChan <- result{cert: certInfo, err: nil}
 	}()
 
@@ -98,13 +105,21 @@ func GetCertInfo(domain string, timeout time.Duration) (*CertInfo, error) {
 }
 
 // GetCertInfoWithFallback 使用SSL获取证书信息（带重试）
+// 参数:
+//   - domain: 要查询的域名
+//   - timeout: 连接超时时间
+//   - config: 配置对象（当前未使用，保留用于未来扩展）
+// 返回值:
+//   - *CertInfo: SSL证书信息对象
+//   - error: 如果所有重试都失败则返回错误
+// 功能: 获取SSL证书信息，失败时自动重试最多2次，每次重试间隔递增
 func GetCertInfoWithFallback(domain string, timeout time.Duration, config *Config) (*CertInfo, error) {
 	maxRetries := 2
 	var lastErr error
-	
+
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		slog.Debug("SSL证书查询尝试", "domain", domain, "attempt", attempt, "max_retries", maxRetries)
-		
+
 		info, err := GetCertInfo(domain, timeout)
 		if err == nil {
 			if attempt > 1 {
@@ -112,10 +127,10 @@ func GetCertInfoWithFallback(domain string, timeout time.Duration, config *Confi
 			}
 			return info, nil
 		}
-		
+
 		lastErr = err
 		slog.Debug("SSL证书查询失败", "domain", domain, "attempt", attempt, "error", err)
-		
+
 		// 如果不是最后一次尝试，等待一下再重试
 		if attempt < maxRetries {
 			waitTime := time.Duration(attempt) * time.Second
@@ -123,10 +138,10 @@ func GetCertInfoWithFallback(domain string, timeout time.Duration, config *Confi
 			time.Sleep(waitTime)
 		}
 	}
-	
+
 	// 根据错误类型决定日志级别
 	errMsg := lastErr.Error()
-	if strings.Contains(errMsg, "timeout") || 
+	if strings.Contains(errMsg, "timeout") ||
 	   strings.Contains(errMsg, "i/o timeout") ||
 	   strings.Contains(errMsg, "connection refused") ||
 	   strings.Contains(errMsg, "no such host") ||
@@ -141,16 +156,22 @@ func GetCertInfoWithFallback(domain string, timeout time.Duration, config *Confi
 }
 
 // parseDomainAndPort 解析域名和端口
+// 参数:
+//   - domain: 域名字符串，可能包含协议前缀和端口
+// 返回值:
+//   - string: 解析后的主机名
+//   - string: 端口号，如果未指定则返回"443"
+// 功能: 从域名字符串中提取主机名和端口，移除协议前缀和路径
 func parseDomainAndPort(domain string) (string, string) {
 	// 移除协议前缀
 	domain = strings.TrimPrefix(domain, "https://")
 	domain = strings.TrimPrefix(domain, "http://")
-	
+
 	// 移除路径
 	if idx := strings.Index(domain, "/"); idx != -1 {
 		domain = domain[:idx]
 	}
-	
+
 	// 检查是否包含端口
 	if strings.Contains(domain, ":") {
 		host, port, err := net.SplitHostPort(domain)
@@ -158,26 +179,31 @@ func parseDomainAndPort(domain string) (string, string) {
 			return host, port
 		}
 	}
-	
+
 	// 默认使用443端口
 	return domain, "443"
 }
 
 // validateDomain 验证域名格式
+// 参数:
+//   - domain: 要验证的域名字符串
+// 返回值:
+//   - error: 如果域名格式无效则返回错误
+// 功能: 验证域名格式是否有效，通过URL解析进行验证
 func validateDomain(domain string) error {
 	if domain == "" {
 		return fmt.Errorf("域名不能为空")
 	}
-	
+
 	// 解析URL以验证格式
 	if !strings.HasPrefix(domain, "http://") && !strings.HasPrefix(domain, "https://") {
 		domain = "https://" + domain
 	}
-	
+
 	_, err := url.Parse(domain)
 	if err != nil {
 		return fmt.Errorf("无效的域名格式: %v", err)
 	}
-	
+
 	return nil
 }

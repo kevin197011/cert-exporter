@@ -44,7 +44,7 @@ NACOS_GROUP=DEFAULT_GROUP        # 可选，默认为 DEFAULT_GROUP
 ```bash
 # 本地配置模式
 DOMAINS=your-domain.com:443,another-domain.com:443
-CHECK_INTERVAL=3600  # 检查间隔（秒）
+# 注意：证书检查固定为每天凌晨3点执行
 PORT=8080           # HTTP服务端口
 LOG_LEVEL=info      # 日志级别
 TIMEOUT=30          # SSL连接超时时间（秒）
@@ -101,7 +101,6 @@ docker run -d \
   --name cert-exporter \
   -p 8080:8080 \
   -e DOMAINS="example.com:443,test.com:443" \
-  -e CHECK_INTERVAL=3600 \
   ghcr.io/kevin197011/cert-exporter:latest
 ```
 
@@ -173,7 +172,8 @@ helm install cert-exporter ./cert-exporter \
 - **domains**: 监控的域名列表，修改后立即触发检查
   - 支持格式：`example.com`、`example.com:8443`、`https://example.com`（会自动移除协议前缀）
   - 并发检测：最大并发数100，1000个域名约10秒完成检测
-- **check_interval**: 检查间隔（秒），修改后在下次定时器触发时生效
+- **执行时间**: 证书检查固定为**每天凌晨3点**自动执行
+  - 配置更新时会立即触发检查，无需等待定时执行
 - **port**: HTTP服务端口（注意：端口变更需要重启服务）
 - **log_level**: 日志级别（debug/info/warn/error）
   - 网络超时、连接失败等问题自动使用 WARN 级别，避免日志刷屏
