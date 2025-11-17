@@ -27,14 +27,14 @@
 
 3. Monitor SSL certificate expiry status:
   The exporter is monitoring the following domains: {{ .Values.config.domains }}
-  Check interval: {{ .Values.config.checkInterval }} seconds
+  Certificate checks are executed daily at 3:00 AM
 
 4. Prometheus integration:
 {{- if .Values.serviceMonitor.enabled }}
   ServiceMonitor is enabled. Prometheus should automatically discover this exporter.
 {{- else }}
   To enable Prometheus scraping, add the following to your Prometheus configuration:
-  
+
   scrape_configs:
     - job_name: 'cert-exporter'
       kubernetes_sd_configs:

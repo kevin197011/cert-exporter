@@ -40,8 +40,6 @@ spec:
           env:
             - name: DOMAINS
               value: {{ .Values.config.domains | quote }}
-            - name: CHECK_INTERVAL
-              value: {{ .Values.config.checkInterval | quote }}
             - name: PORT
               value: {{ .Values.config.port | quote }}
             - name: LOG_LEVEL

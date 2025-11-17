@@ -82,8 +82,7 @@ affinity: {}
 config:
   # 监控的域名列表，用逗号分隔
   domains: "example.com:443,test.com:443"
-  # 检查间隔（秒）
-  checkInterval: 3600
+  # 注意：证书检查固定为每天凌晨3点执行
   # HTTP服务端口
   port: 8080
   # 日志级别
@@ -94,7 +93,7 @@ config:
 # Nacos configuration (optional)
 nacos:
   enabled: true
-  url: "http://192.168.1.11:8848"  
+  url: "http://192.168.1.11:8848"
   username: "nacos"
   password: "nacos"
   namespaceId: "devops"
@@ -115,7 +114,7 @@ secrets: []
 serviceMonitor:
   enabled: true
   namespace: ""  # 留空使用当前命名空间
-  labels: 
+  labels:
     release: prometheus  # 重要：需要匹配 Prometheus 的 serviceMonitorSelector
   interval: 30s
   scrapeTimeout: 10s

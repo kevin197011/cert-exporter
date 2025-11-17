@@ -33,7 +33,6 @@ helm install cert-exporter ./cert-exporter -f ./cert-exporter/values-prod.yaml
 # 或者通过命令行设置参数
 helm install cert-exporter ./cert-exporter \
   --set config.domains="yourdomain.com:443,anotherdomain.com:443" \
-  --set config.checkInterval=1800 \
   --set replicaCount=2
 ```
 
@@ -59,8 +58,8 @@ helm install cert-exporter-dev ./cert-exporter -f ./cert-exporter/values-dev.yam
 | 参数 | 描述 | 默认值 |
 |------|------|--------|
 | `config.domains` | 监控的域名列表（逗号分隔） | `"example.com:443,test.com:443"` |
-| `config.checkInterval` | 检查间隔（秒） | `3600` |
 | `config.port` | HTTP 服务端口 | `8080` |
+| 执行时间 | 证书检查固定为每天凌晨3点执行 | - |
 | `config.logLevel` | 日志级别 | `"info"` |
 | `config.timeout` | SSL连接超时时间（秒） | `30` |
 
@@ -157,7 +156,7 @@ helm upgrade cert-exporter ./cert-exporter
 
 # 升级并修改配置
 helm upgrade cert-exporter ./cert-exporter \
-  --set config.checkInterval=1800
+  --set config.domains="yourdomain.com:443"
 ```
 
 ## 卸载

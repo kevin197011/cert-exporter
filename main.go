@@ -65,7 +65,6 @@ func main() {
 	// 打印详细的配置信息用于调试
 	slog.Info("配置加载完成",
 		"domains", len(config.Domains),
-		"check_interval", config.CheckInterval,
 		"port", config.Port,
 		"timeout", config.Timeout,
 		"nacos_enabled", config.IsNacosEnabled())
@@ -120,12 +119,12 @@ func main() {
 		configInfo := map[string]interface{}{
 			"domains":          currentConfig.Domains,
 			"domain_count":     len(currentConfig.Domains),
-			"check_interval":   currentConfig.CheckInterval,
 			"port":             currentConfig.Port,
 			"log_level":        currentConfig.LogLevel,
 			"timeout":          currentConfig.Timeout,
 			"detection_method": "ssl",
 			"execution_mode":   "serial",
+			"execution_time":   "每天凌晨3点",
 			"nacos_enabled":    currentConfig.IsNacosEnabled(),
 			"nacos_url":        currentConfig.NacosUrl,
 			"nacos_namespace":  currentConfig.NamespaceId,
