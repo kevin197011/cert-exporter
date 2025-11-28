@@ -209,6 +209,9 @@ func (e *CertExporter) watchConfigUpdates() {
 				// 详细记录所有配置变化
 				e.logConfigChanges(&oldConfig, newConfig)
 
+				// 清理不再使用的域名指标
+				e.cleanupRemovedDomainMetrics(&oldConfig, newConfig)
+
 				// 只有在初始检查完成后才触发配置变更检查，避免启动时重复检查
 				if initialCheckDone {
 					select {
@@ -464,6 +467,44 @@ func (e *CertExporter) logConfigChanges(oldConfig, newConfig *Config) {
 		}
 	} else {
 		slog.Debug("配置已重新加载，但未检测到参数变化")
+	}
+}
+
+// cleanupRemovedDomainMetrics 清理不再使用的域名指标
+// 参数:
+//   - oldConfig: 旧配置对象
+//   - newConfig: 新配置对象
+// 功能: 比较新旧域名列表，删除不再存在的域名的所有Prometheus指标
+func (e *CertExporter) cleanupRemovedDomainMetrics(oldConfig, newConfig *Config) {
+	// 创建新域名集合，用于快速查找
+	newDomainSet := make(map[string]bool)
+	for _, domain := range newConfig.Domains {
+		newDomainSet[domain] = true
+	}
+
+	// 找出被删除的域名
+	var removedDomains []string
+	for _, domain := range oldConfig.Domains {
+		if !newDomainSet[domain] {
+			removedDomains = append(removedDomains, domain)
+		}
+	}
+
+	// 如果有被删除的域名，清理它们的指标
+	if len(removedDomains) > 0 {
+		slog.Info("检测到域名被删除，清理相关指标", "removed_domains", removedDomains, "count", len(removedDomains))
+
+		for _, domain := range removedDomains {
+			// 删除所有相关指标
+			e.certExpiryDays.DeleteLabelValues(domain)
+			e.certExpiryTime.DeleteLabelValues(domain)
+			e.certCheckTime.DeleteLabelValues(domain)
+			e.certStatus.DeleteLabelValues(domain)
+
+			slog.Debug("已清理域名指标", "domain", domain)
+		}
+
+		slog.Info("域名指标清理完成", "cleaned_count", len(removedDomains))
 	}
 }
 

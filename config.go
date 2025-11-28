@@ -201,15 +201,11 @@ func normalizeDomains(config *Config) {
 		// 移除空白字符
 		domain = strings.TrimSpace(domain)
 
-		// 移除 https:// 前缀
-		if strings.HasPrefix(domain, "https://") {
-			domain = strings.TrimPrefix(domain, "https://")
-		}
+		// 移除 https:// 前缀（如果存在）
+		domain = strings.TrimPrefix(domain, "https://")
 
-		// 移除 http:// 前缀
-		if strings.HasPrefix(domain, "http://") {
-			domain = strings.TrimPrefix(domain, "http://")
-		}
+		// 移除 http:// 前缀（如果存在）
+		domain = strings.TrimPrefix(domain, "http://")
 
 		// 移除尾部的斜杠
 		domain = strings.TrimSuffix(domain, "/")
